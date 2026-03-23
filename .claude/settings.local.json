@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install lucide-react @radix-ui/react-slot class-variance-authority clsx tailwind-merge)"
+    ]
+  }
+}

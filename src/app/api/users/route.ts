@@ -17,7 +17,9 @@ let users: User[] = [];
 export async function GET(request: NextRequest) {
   // Simple auth check
   const authHeader = request.headers.get('x-admin-key');
-  if (authHeader !== process.env.ADMIN_KEY && process.env.ADMIN_KEY) {
+  const adminKey = process.env.ADMIN_KEY || 'tyuiop';
+
+  if (authHeader !== adminKey) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

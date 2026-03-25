@@ -27,13 +27,21 @@ export default function Dashboard() {
           'x-admin-key': adminKey,
         },
       });
+
+      if (response.status === 401) {
+        alert('Invalid admin key');
+        setLoading(false);
+        return;
+      }
+
       const data = await response.json();
-      if (data.users) {
+      if (data.users !== undefined) {
         setUsers(data.users);
         setIsAuthenticated(true);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      alert('Error connecting to server');
     }
     setLoading(false);
   };

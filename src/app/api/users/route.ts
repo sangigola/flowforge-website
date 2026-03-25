@@ -15,11 +15,11 @@ let users: User[] = [];
 
 // GET - Retrieve all users
 export async function GET(request: NextRequest) {
-  // Simple auth check
+  // Simple auth check - hardcoded for now
   const authHeader = request.headers.get('x-admin-key');
-  const adminKey = process.env.ADMIN_KEY || 'tyuiop';
 
-  if (authHeader !== adminKey) {
+  // Accept 'tyuiop' as the admin key
+  if (authHeader !== 'tyuiop') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

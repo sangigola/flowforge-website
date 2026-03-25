@@ -1,10 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
-
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 // System prompt for customer support
 const SYSTEM_PROMPT = `You are a helpful customer support assistant for Flowforge.systems, an AI-powered solutions company.
@@ -28,33 +23,44 @@ export async function POST(request: NextRequest) {
   try {
     const { messages } = await request.json();
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
         { error: 'API key not configured' },
         { status: 500 }
       );
     }
 
-    // Format messages for Claude
-    const formattedMessages = messages.map((msg: { role: string; content: string }) => ({
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content,
+    // Initialize Gemini
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    // Build conversation history
+    const history = messages.slice(0, -1).map((msg: { role: string; content: string }) => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }],
     }));
 
-    // Call Claude API
-    const response = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 500,
-      system: SYSTEM_PROMPT,
-      messages: formattedMessages,
+    // Start chat
+    const chat = model.startChat({
+      history,
+      generationConfig: {
+        maxOutputTokens: 500,
+        temperature: 0.7,
+      },
     });
 
-    // Extract text from response
-    const textContent = response.content.find(block => block.type === 'text');
-    const message = textContent?.type === 'text' ? textContent.text : 'Sorry, I could not generate a response.';
+    // Get latest message with system prompt for first message
+    const latestMessage = messages[messages.length - 1].content;
+    const prompt = messages.length === 1
+      ? `${SYSTEM_PROMPT}\n\nUser message: ${latestMessage}\n\nRespond helpfully:`
+      : latestMessage;
+
+    // Generate response
+    const result = await chat.sendMessage(prompt);
+    const response = result.response.text();
 
     return NextResponse.json({
-      message,
+      message: response,
       role: 'assistant'
     });
   } catch (error) {

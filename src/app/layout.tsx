@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sign In | Asme",
-  description: "Sign in or create your Asme account",
+  title: "Flowforge.systems",
+  description: "AI-powered solutions for your business",
 };
 
 export default function RootLayout({

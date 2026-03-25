@@ -81,34 +81,32 @@ export function MinimalAuthPage() {
         setIsAiTyping(true);
 
         try {
+            // Call the AI chat API
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ messages: newMessages }),
             });
 
-            const data = await response.json();
-
-            if (data.error) {
-                setMessages([...newMessages, {
-                    role: 'assistant',
-                    content: data.error
-                }]);
-            } else {
-                setMessages([...newMessages, {
-                    role: 'assistant',
-                    content: data.message
-                }]);
+            if (!response.ok) {
+                throw new Error('Failed to get response');
             }
-        } catch (error) {
-            console.error('Chat error:', error);
+
+            const data = await response.json();
             setMessages([...newMessages, {
                 role: 'assistant',
-                content: 'Sorry, I encountered an error. Please try again.'
+                content: data.message
             }]);
-        } finally {
-            setIsAiTyping(false);
+        } catch (error) {
+            console.error('Chat error:', error);
+            // Fallback message if API fails
+            setMessages([...newMessages, {
+                role: 'assistant',
+                content: 'I apologize, but I\'m having trouble connecting right now. Please try again or contact us at contact@flowforge.systems for assistance.'
+            }]);
         }
+
+        setIsAiTyping(false);
     };
 
     const handleGoHome = () => {
@@ -139,12 +137,13 @@ export function MinimalAuthPage() {
                 </div>
             )}
 
-            {/* Home Button - Bottom Right (when chat is active) */}
+            {/* Home Button - Bottom Right aligned with chat input (when chat is active) */}
             {chatStarted && (
-                <div className="fixed bottom-24 right-4 z-40">
+                <div className="fixed bottom-10 right-4 z-40">
                     <Button
                         onClick={handleGoHome}
                         variant="outline"
+                        size="sm"
                         className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 shadow-lg"
                     >
                         <Home className="size-4" />

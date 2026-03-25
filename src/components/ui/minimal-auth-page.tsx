@@ -89,21 +89,27 @@ export function MinimalAuthPage() {
                 body: JSON.stringify({ messages: newMessages }),
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error('Failed to get response');
+                // Use error message from API if available
+                throw new Error(data.error || 'Failed to get response');
             }
 
-            const data = await response.json();
             setMessages([...newMessages, {
                 role: 'assistant',
                 content: data.message
             }]);
         } catch (error) {
             console.error('Chat error:', error);
-            // Fallback message if API fails
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+            // Show specific error or fallback message
             setMessages([...newMessages, {
                 role: 'assistant',
-                content: 'I apologize, but I\'m having trouble connecting right now. Please try again or contact us at contact@flowforge.systems for assistance.'
+                content: errorMessage.includes('busy') || errorMessage.includes('try again')
+                    ? errorMessage
+                    : 'I apologize, but I\'m having trouble connecting right now. Please try again or contact us at contact@flowforge.systems for assistance.'
             }]);
         }
 

@@ -26,6 +26,7 @@ export function MinimalAuthPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [chatStarted, setChatStarted] = useState(false);
     const [isAiTyping, setIsAiTyping] = useState(false);
+    const [focusTrigger, setFocusTrigger] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -39,7 +40,7 @@ export function MinimalAuthPage() {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch('/api/contact', {
+            const response = await fetch('/api/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -107,6 +108,7 @@ export function MinimalAuthPage() {
         }
 
         setIsAiTyping(false);
+        setFocusTrigger(prev => prev + 1);
     };
 
     const handleGoHome = () => {
@@ -267,7 +269,7 @@ export function MinimalAuthPage() {
 
             {/* Chat Input Section */}
             <div className="relative w-full pb-8">
-                <AIChatInput onSendMessage={handleSendMessage} disabled={isAiTyping} />
+                <AIChatInput onSendMessage={handleSendMessage} disabled={isAiTyping} focusTrigger={focusTrigger} />
             </div>
 
             {/* Modal Overlay - For Sign In (popup in center) */}

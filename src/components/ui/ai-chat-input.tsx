@@ -17,9 +17,10 @@ const PLACEHOLDERS = [
 interface AIChatInputProps {
   onSendMessage?: (message: string) => void;
   disabled?: boolean;
+  focusTrigger?: number;
 }
 
-const AIChatInput = ({ onSendMessage, disabled = false }: AIChatInputProps) => {
+const AIChatInput = ({ onSendMessage, disabled = false, focusTrigger }: AIChatInputProps) => {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
   const [isActive, setIsActive] = useState(false);
@@ -58,6 +59,14 @@ const AIChatInput = ({ onSendMessage, disabled = false }: AIChatInputProps) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [inputValue]);
+
+  // Focus input when focusTrigger changes (after AI responds)
+  useEffect(() => {
+    if (focusTrigger && focusTrigger > 0) {
+      inputRef.current?.focus();
+      setIsActive(true);
+    }
+  }, [focusTrigger]);
 
   const handleActivate = () => setIsActive(true);
 

@@ -75,6 +75,48 @@ function extractContactInfo(messages: { role: string; content: string }[]) {
   return { email, phone };
 }
 
+// Helper function to sleep for retry delays
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Retry wrapper for Gemini API calls
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      lastError = error as Error;
+      const errorMessage = lastError?.message || '';
+
+      // Check if it's a rate limit error (429) or temporary error (503)
+      const isRetryable =
+        errorMessage.includes('429') ||
+        errorMessage.includes('503') ||
+        errorMessage.includes('RESOURCE_EXHAUSTED') ||
+        errorMessage.includes('rate') ||
+        errorMessage.includes('quota');
+
+      if (!isRetryable || attempt === maxRetries - 1) {
+        throw lastError;
+      }
+
+      // Exponential backoff: 1s, 2s, 4s
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(`Gemini API rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { messages } = await request.json();
@@ -109,8 +151,8 @@ export async function POST(request: NextRequest) {
     const latestMessage = messages[messages.length - 1].content;
     const prompt = `${SYSTEM_PROMPT}\n\nUser says: "${latestMessage}"\n\nRespond as Flowforge support (2-3 sentences max):`;
 
-    // Generate response
-    const result = await chat.sendMessage(prompt);
+    // Generate response with retry logic for rate limiting
+    const result = await withRetry(() => chat.sendMessage(prompt));
     const response = result.response.text();
 
     // Check for contact info in messages
@@ -118,11 +160,15 @@ export async function POST(request: NextRequest) {
 
     // If contact info found, save the lead
     if (email || phone) {
-      // Generate summary of conversation
+      // Generate summary of conversation with retry
       let summary = 'General inquiry';
       try {
-        const summaryResult = await model.generateContent(
-          `Analyze this customer chat and provide a brief 1-2 sentence summary of what they need or are asking about. Just the summary, no labels:\n\n${messages.map((m: {role: string; content: string}) => `${m.role}: ${m.content}`).join('\n')}`
+        const summaryResult = await withRetry(
+          () => model.generateContent(
+            `Analyze this customer chat and provide a brief 1-2 sentence summary of what they need or are asking about. Just the summary, no labels:\n\n${messages.map((m: {role: string; content: string}) => `${m.role}: ${m.content}`).join('\n')}`
+          ),
+          2, // fewer retries for summary
+          500
         );
         summary = summaryResult.response.text();
       } catch {
@@ -158,10 +204,27 @@ export async function POST(request: NextRequest) {
       role: 'assistant',
       leadCaptured: !!(email || phone)
     });
-  } catch (error) {
-    console.error('Chat API error:', error);
+  } catch (error: unknown) {
+    const errorMessage = (error as Error)?.message || 'Unknown error';
+    console.error('Chat API error:', errorMessage);
+
+    // Provide more specific error messages
+    if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('quota')) {
+      return NextResponse.json(
+        { error: 'Our chat service is busy right now. Please try again in a moment.' },
+        { status: 429 }
+      );
+    }
+
+    if (errorMessage.includes('API_KEY') || errorMessage.includes('authentication')) {
+      return NextResponse.json(
+        { error: 'Chat service configuration error' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Failed to generate response' },
+      { error: 'Sorry, I could not process your message. Please try again.' },
       { status: 500 }
     );
   }

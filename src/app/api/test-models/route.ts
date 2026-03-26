@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -8,36 +7,45 @@ export async function GET() {
     return NextResponse.json({ error: 'No API key found in environment' }, { status: 500 });
   }
 
-  // Show masked key for debugging (first 10 chars + last 4)
+  // Show masked key for debugging
   const maskedKey = apiKey.substring(0, 10) + '...' + apiKey.substring(apiKey.length - 4);
 
-  const genAI = new GoogleGenerativeAI(apiKey);
+  // Test with direct API call to get full error
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Say hello' }] }]
+        })
+      }
+    );
 
-  // Try different model names
-  const modelsToTry = [
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-pro',
-    'gemini-pro',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-exp',
-    'models/gemini-1.5-flash',
-    'models/gemini-pro',
-  ];
+    const data = await response.json();
 
-  const results: { model: string; status: string; error?: string }[] = [];
-
-  for (const modelName of modelsToTry) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent('Say hi');
-      const text = result.response.text();
-      results.push({ model: modelName, status: 'working', error: text.substring(0, 50) });
-    } catch (error: unknown) {
-      const err = error as Error;
-      results.push({ model: modelName, status: 'failed', error: err.message?.substring(0, 100) });
+    if (response.ok) {
+      return NextResponse.json({
+        maskedKey,
+        status: 'working',
+        model: 'gemini-1.5-flash',
+        response: data.candidates?.[0]?.content?.parts?.[0]?.text?.substring(0, 100)
+      });
+    } else {
+      return NextResponse.json({
+        maskedKey,
+        status: 'failed',
+        httpStatus: response.status,
+        error: data.error
+      });
     }
+  } catch (error: unknown) {
+    const err = error as Error;
+    return NextResponse.json({
+      maskedKey,
+      status: 'fetch_error',
+      error: err.message
+    });
   }
-
-  return NextResponse.json({ maskedKey, keyLength: apiKey.length, results });
 }

@@ -7,45 +7,31 @@ export async function GET() {
     return NextResponse.json({ error: 'No API key found in environment' }, { status: 500 });
   }
 
-  // Show masked key for debugging
-  const maskedKey = apiKey.substring(0, 10) + '...' + apiKey.substring(apiKey.length - 4);
-
-  // Test with direct API call to get full error
+  // List available models
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Say hello' }] }]
-        })
-      }
+    const listResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
     );
+    const listData = await listResponse.json();
 
-    const data = await response.json();
-
-    if (response.ok) {
-      return NextResponse.json({
-        maskedKey,
-        status: 'working',
-        model: 'gemini-1.5-flash',
-        response: data.candidates?.[0]?.content?.parts?.[0]?.text?.substring(0, 100)
-      });
-    } else {
-      return NextResponse.json({
-        maskedKey,
-        status: 'failed',
-        httpStatus: response.status,
-        error: data.error
-      });
+    if (!listResponse.ok) {
+      return NextResponse.json({ error: 'Failed to list models', details: listData });
     }
+
+    // Get model names that support generateContent
+    const availableModels = listData.models
+      ?.filter((m: { supportedGenerationMethods?: string[] }) =>
+        m.supportedGenerationMethods?.includes('generateContent')
+      )
+      .map((m: { name: string }) => m.name)
+      .slice(0, 10); // First 10
+
+    return NextResponse.json({
+      availableModels,
+      totalModels: listData.models?.length || 0
+    });
   } catch (error: unknown) {
     const err = error as Error;
-    return NextResponse.json({
-      maskedKey,
-      status: 'fetch_error',
-      error: err.message
-    });
+    return NextResponse.json({ error: err.message });
   }
 }

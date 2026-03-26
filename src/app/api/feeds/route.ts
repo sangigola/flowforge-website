@@ -10,7 +10,7 @@ const parser = new Parser({
 
 // RSS Feed sources for Caucasus region
 const RSS_SOURCES = {
-  // Georgia
+  // Georgia - Major News Sources
   georgia: [
     {
       name: 'Civil.ge',
@@ -35,6 +35,43 @@ const RSS_SOURCES = {
       url: 'https://nbg.gov.ge/en/rss',
       country: 'Georgia',
       type: 'government',
+    },
+    // Popular Georgian news sources (from mediamonitoring.ge research)
+    {
+      name: 'Interpressnews',
+      url: 'https://www.interpressnews.ge/en/rss',
+      country: 'Georgia',
+      type: 'news',
+    },
+    {
+      name: 'Ambebi.ge',
+      url: 'https://ambebi.ge/rss',
+      country: 'Georgia',
+      type: 'news',
+    },
+    {
+      name: 'Netgazeti',
+      url: 'https://netgazeti.ge/feed/',
+      country: 'Georgia',
+      type: 'news',
+    },
+    {
+      name: 'On.ge',
+      url: 'https://on.ge/feed',
+      country: 'Georgia',
+      type: 'news',
+    },
+    {
+      name: 'Business Media Georgia',
+      url: 'https://bm.ge/en/rss',
+      country: 'Georgia',
+      type: 'business',
+    },
+    {
+      name: 'Commersant.ge',
+      url: 'https://commersant.ge/feed',
+      country: 'Georgia',
+      type: 'business',
     },
   ],
   // Armenia
@@ -104,12 +141,25 @@ const RSS_SOURCES = {
 
 // Keywords for filtering relevant content
 const TOBACCO_KEYWORDS = [
-  'tobacco', 'cigarette', 'excise', 'tax', 'duty', 'customs',
-  'regulation', 'legislation', 'parliament', 'law', 'amendment',
-  'trade', 'import', 'export', 'tariff', 'price', 'retail',
+  // Direct tobacco terms
+  'tobacco', 'cigarette', 'cigarettes', 'smoking', 'smoker', 'nicotine',
+  'vape', 'vaping', 'e-cigarette', 'heated tobacco', 'iqos', 'heets',
+  // Tax and regulation
+  'excise', 'excise tax', 'tax', 'duty', 'customs', 'tariff',
+  'regulation', 'legislation', 'parliament', 'law', 'amendment', 'ban',
+  // Trade
+  'trade', 'import', 'export', 'smuggling', 'illicit', 'contraband',
+  'price', 'retail', 'wholesale',
+  // Market
   'fmcg', 'consumer', 'market', 'economy', 'inflation', 'currency',
-  'exchange rate', 'logistics', 'transport', 'border', 'sanctions',
-  'philip morris', 'bat', 'jti', 'imperial', 'PMI', 'competitor'
+  'exchange rate',
+  // Logistics
+  'logistics', 'transport', 'border', 'sanctions', 'distribution',
+  // Companies
+  'philip morris', 'bat', 'jti', 'imperial', 'PMI', 'british american tobacco',
+  'japan tobacco', 'altria', 'reynolds',
+  // Georgian specific
+  'თამბაქო', 'სიგარეტი', 'აქციზი' // Georgian: tobacco, cigarette, excise
 ];
 
 const REGULATORY_KEYWORDS = [

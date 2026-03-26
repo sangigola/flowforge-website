@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { X, Loader2, User, Bot, Home } from 'lucide-react';
 import { Particles } from '@/components/ui/particles';
 import { AIChatInput } from '@/components/ui/ai-chat-input';
+import { VerticalTabs } from '@/components/ui/vertical-tabs';
 
 type ModalType = 'google' | 'github' | 'signin' | null;
 
@@ -160,59 +161,72 @@ export function MinimalAuthPage() {
                 </div>
             )}
 
-            {/* Auth Section - Centered (only when chat not started) */}
+            {/* Main Content - Services Slideshow + Auth (only when chat not started) */}
             {!chatStarted && (
-                <div className="relative flex-1 flex flex-col justify-center items-center px-4 pb-8" style={{ paddingTop: '8vh' }}>
-                    <div className="w-full max-w-sm space-y-4 -mt-16">
-                        <div className="flex items-center gap-2">
-                            <FlowforgeIcon className="size-6" />
-                            <p className="text-xl font-semibold">Flowforge.systems</p>
+                <div className="relative flex-1 flex flex-col px-4 pb-8 pt-6">
+                    {/* Header */}
+                    <div className="flex items-center gap-2 mb-6 px-4 lg:px-8">
+                        <FlowforgeIcon className="size-6" />
+                        <p className="text-xl font-semibold">Flowforge.systems</p>
+                    </div>
+
+                    {/* Two Column Layout */}
+                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center max-w-7xl mx-auto w-full">
+                        {/* Left: Services Slideshow */}
+                        <div className="order-2 lg:order-1">
+                            <VerticalTabs />
                         </div>
-                        <div className="flex flex-col space-y-1">
-                            <h1 className="font-heading text-2xl font-bold tracking-wide">
-                                Sign In or Join Now!
-                            </h1>
-                            <p className="text-muted-foreground text-base">
-                                Login or create your Flowforge account.
-                            </p>
+
+                        {/* Right: Auth Section */}
+                        <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
+                            <div className="w-full max-w-sm space-y-4">
+                                <div className="flex flex-col space-y-1">
+                                    <h1 className="font-heading text-2xl font-bold tracking-wide">
+                                        Sign In or Join Now!
+                                    </h1>
+                                    <p className="text-muted-foreground text-base">
+                                        Login or create your Flowforge account.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Button
+                                        type="button"
+                                        size="lg"
+                                        className="w-full"
+                                        onClick={() => setActiveModal('google')}
+                                    >
+                                        <GoogleIcon className="me-2 size-4" />
+                                        Continue with Google
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="lg"
+                                        className="w-full"
+                                        onClick={() => setActiveModal('github')}
+                                    >
+                                        <GitHubIcon className="me-2 size-4" />
+                                        Continue with GitHub
+                                    </Button>
+                                </div>
+                                <p className="text-muted-foreground mt-8 text-sm">
+                                    By clicking continue, you agree to our{' '}
+                                    <a
+                                        href="/terms"
+                                        className="hover:text-primary underline underline-offset-4"
+                                    >
+                                        Terms of Service
+                                    </a>{' '}
+                                    and{' '}
+                                    <a
+                                        href="/privacy"
+                                        className="hover:text-primary underline underline-offset-4"
+                                    >
+                                        Privacy Policy
+                                    </a>
+                                    .
+                                </p>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Button
-                                type="button"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => setActiveModal('google')}
-                            >
-                                <GoogleIcon className="me-2 size-4" />
-                                Continue with Google
-                            </Button>
-                            <Button
-                                type="button"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => setActiveModal('github')}
-                            >
-                                <GitHubIcon className="me-2 size-4" />
-                                Continue with GitHub
-                            </Button>
-                        </div>
-                        <p className="text-muted-foreground mt-8 text-sm">
-                            By clicking continue, you agree to our{' '}
-                            <a
-                                href="/terms"
-                                className="hover:text-primary underline underline-offset-4"
-                            >
-                                Terms of Service
-                            </a>{' '}
-                            and{' '}
-                            <a
-                                href="/privacy"
-                                className="hover:text-primary underline underline-offset-4"
-                            >
-                                Privacy Policy
-                            </a>
-                            .
-                        </p>
                     </div>
                 </div>
             )}

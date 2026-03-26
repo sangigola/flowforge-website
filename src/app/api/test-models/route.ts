@@ -2,11 +2,16 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json({ error: 'No API key' }, { status: 500 });
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return NextResponse.json({ error: 'No API key found in environment' }, { status: 500 });
   }
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  // Show masked key for debugging (first 10 chars + last 4)
+  const maskedKey = apiKey.substring(0, 10) + '...' + apiKey.substring(apiKey.length - 4);
+
+  const genAI = new GoogleGenerativeAI(apiKey);
 
   // Try different model names
   const modelsToTry = [
@@ -34,5 +39,5 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ results });
+  return NextResponse.json({ maskedKey, keyLength: apiKey.length, results });
 }

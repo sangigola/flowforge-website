@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     // Build conversation history
     const history = messages.slice(0, -1).map((msg: { role: string; content: string }) => ({
@@ -205,8 +205,10 @@ export async function POST(request: NextRequest) {
       leadCaptured: !!(email || phone)
     });
   } catch (error: unknown) {
-    const errorMessage = (error as Error)?.message || 'Unknown error';
+    const err = error as Error;
+    const errorMessage = err?.message || 'Unknown error';
     console.error('Chat API error:', errorMessage);
+    console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
 
     // Provide more specific error messages
     if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('quota')) {
@@ -216,15 +218,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (errorMessage.includes('API_KEY') || errorMessage.includes('authentication')) {
+    if (errorMessage.includes('API_KEY') || errorMessage.includes('authentication') || errorMessage.includes('API key')) {
       return NextResponse.json(
-        { error: 'Chat service configuration error' },
+        { error: 'Chat service configuration error. Please check API key.' },
+        { status: 500 }
+      );
+    }
+
+    if (errorMessage.includes('not found') || errorMessage.includes('404') || errorMessage.includes('model')) {
+      return NextResponse.json(
+        { error: 'Chat model unavailable. Please try again later.' },
         { status: 500 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Sorry, I could not process your message. Please try again.' },
+      { error: `Chat error: ${errorMessage.substring(0, 100)}` },
       { status: 500 }
     );
   }

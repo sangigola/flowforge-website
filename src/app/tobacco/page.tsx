@@ -318,7 +318,7 @@ export default function TobaccoHub() {
     if (diffHours < 1) return 'Just now';
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   // Search results
@@ -1417,7 +1417,7 @@ export default function TobaccoHub() {
                             }`}>{alert.severity}</span>
                             <span className={`text-xs ${textMuted}`}>{alert.location}</span>
                             <span className={`text-xs ${textMuted}`}>•</span>
-                            <span className={`text-xs ${textMuted}`}>{new Date(alert.date).toLocaleDateString()}</span>
+                            <span className={`text-xs ${textMuted}`}>{new Date(alert.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </div>
                       </div>
@@ -1448,7 +1448,7 @@ export default function TobaccoHub() {
                           <p className={`font-medium ${textPrimary}`}>{shipment.route}</p>
                           <p className={`text-xs ${textMuted}`}>
                             {shipment.volume.toLocaleString()} units • {shipment.deviation > 0 ? '+' : ''}{shipment.deviation.toFixed(1)}% variance
-                            <span className="ml-2">• {new Date(shipment.lastShipment).toLocaleDateString()}</span>
+                            <span className="ml-2">• {new Date(shipment.lastShipment).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </p>
                         </div>
                       </div>
@@ -1491,7 +1491,7 @@ export default function TobaccoHub() {
                           }`}>{risk.severity}</span>
                         </div>
                         <p className={`text-sm ${textMuted} mt-1 line-clamp-2`}>{risk.description}</p>
-                        <p className={`text-xs ${textMuted} mt-2`}>{new Date(risk.date).toLocaleDateString()}</p>
+                        <p className={`text-xs ${textMuted} mt-2`}>{new Date(risk.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                       <ChevronRight className={`w-5 h-5 ${textMuted}`} />
                     </div>
@@ -1540,7 +1540,7 @@ export default function TobaccoHub() {
                             }`}>{action.priority}</span>
                             <span className={`text-xs ${textMuted}`}>{action.country} • {action.actionType}</span>
                             <span className={`text-xs ${textMuted}`}>•</span>
-                            <span className={`text-xs ${textMuted}`}>{new Date(action.date).toLocaleDateString()}</span>
+                            <span className={`text-xs ${textMuted}`}>{new Date(action.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <p className={`font-medium ${textPrimary}`}>{action.title}</p>
                           <p className={`text-sm ${textMuted} mt-1 line-clamp-2`}>{action.description}</p>
@@ -1574,7 +1574,7 @@ export default function TobaccoHub() {
                             <span className={`text-xs px-2 py-0.5 rounded ${cardInner}`}>{update.type}</span>
                             <span className={`text-xs ${textMuted}`}>{update.country}</span>
                             <span className={`text-xs ${textMuted}`}>•</span>
-                            <span className={`text-xs ${textMuted}`}>{new Date(update.date).toLocaleDateString()}</span>
+                            <span className={`text-xs ${textMuted}`}>{new Date(update.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <p className={`font-medium ${textPrimary}`}>{update.title}</p>
                           <p className={`text-sm ${textMuted} mt-1 line-clamp-2`}>{update.description}</p>
@@ -1607,7 +1607,7 @@ export default function TobaccoHub() {
                         <span className={`text-xs px-2 py-0.5 rounded ${cardInner}`}>{trend.category}</span>
                         <span className={`text-xs ${textMuted}`}>{trend.country}</span>
                       </div>
-                      <span className={`text-xs ${textMuted}`}>{new Date(trend.date).toLocaleDateString()}</span>
+                      <span className={`text-xs ${textMuted}`}>{new Date(trend.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <p className={`font-medium ${textPrimary} text-sm`}>{trend.title}</p>
                     <p className={`text-xs ${textMuted} mt-1 line-clamp-2`}>{trend.description}</p>

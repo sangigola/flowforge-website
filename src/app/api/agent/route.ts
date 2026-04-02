@@ -212,7 +212,7 @@ async function createTicketInKV(sessionId: string, issue: string): Promise<Suppo
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, sessionId } = await request.json();
+    const { message, sessionId, visitorId } = await request.json();
 
     if (!message || !sessionId) {
       return NextResponse.json(
@@ -230,6 +230,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Load or create chat session
     let session = await kv.get<ChatSession>(`chat:${sessionId}`);
+    const isNewSession = !session;
     if (!session) {
       session = {
         id: sessionId,
@@ -237,6 +238,11 @@ export async function POST(request: NextRequest) {
         createdAt: new Date().toISOString(),
         lastActive: new Date().toISOString()
       };
+    }
+
+    // Track session in visitor's list (for new sessions)
+    if (isNewSession && visitorId) {
+      await kv.lpush(`visitor:${visitorId}:sessions`, sessionId);
     }
 
     // 2. Add user message
@@ -277,7 +283,7 @@ Respond as Flowforge support (2-3 sentences max):`;
       model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: 250,
+          maxOutputTokens: 500,
           temperature: 0.5,
         }
       })

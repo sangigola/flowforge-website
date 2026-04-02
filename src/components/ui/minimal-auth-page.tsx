@@ -2,10 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Loader2, User, Bot, Home } from 'lucide-react';
+import { X, Loader2, User, Bot, Home, Briefcase, MessageSquare, Plus, Menu, ChevronLeft } from 'lucide-react';
 import { Particles } from '@/components/ui/particles';
 import { AIChatInput } from '@/components/ui/ai-chat-input';
-import { VerticalTabs } from '@/components/ui/vertical-tabs';
 import { getOrCreateSessionId } from '@/lib/fingerprint';
 
 type ModalType = 'google' | 'github' | 'signin' | null;
@@ -13,6 +12,13 @@ type ModalType = 'google' | 'github' | 'signin' | null;
 interface Message {
     role: 'user' | 'assistant';
     content: string;
+}
+
+interface ChatHistoryItem {
+    id: string;
+    title: string;
+    lastActive: string;
+    messageCount: number;
 }
 
 export function MinimalAuthPage() {
@@ -29,8 +35,11 @@ export function MinimalAuthPage() {
     const [chatStarted, setChatStarted] = useState(false);
     const [isAiTyping, setIsAiTyping] = useState(false);
     const [focusTrigger, setFocusTrigger] = useState(0);
+    const [visitorId, setVisitorId] = useState<string | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+    const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -38,21 +47,18 @@ export function MinimalAuthPage() {
     useEffect(() => {
         const initSession = async () => {
             try {
-                // Get or create session ID
+                // Get visitor ID (fingerprint)
                 const id = await getOrCreateSessionId();
-                setSessionId(id);
+                setVisitorId(id);
 
-                // Load existing chat history
-                const response = await fetch(`/api/agent/history?sessionId=${id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.messages && data.messages.length > 0) {
-                        setMessages(data.messages.map((m: { role: string; content: string }) => ({
-                            role: m.role as 'user' | 'assistant',
-                            content: m.content
-                        })));
-                        setChatStarted(true);
-                    }
+                // Load chat history for this visitor
+                await loadChatHistory(id);
+
+                // Check for existing session in localStorage or create new
+                const storedSessionId = localStorage.getItem('flowforge_current_session');
+                if (storedSessionId) {
+                    setSessionId(storedSessionId);
+                    await loadSessionMessages(storedSessionId);
                 }
             } catch (error) {
                 console.error('Error initializing session:', error);
@@ -62,6 +68,56 @@ export function MinimalAuthPage() {
         };
         initSession();
     }, []);
+
+    const loadChatHistory = async (visitorId: string) => {
+        try {
+            const response = await fetch(`/api/agent/sessions?visitorId=${visitorId}`);
+            if (response.ok) {
+                const data = await response.json();
+                setChatHistory(data.sessions || []);
+            }
+        } catch (error) {
+            console.error('Error loading chat history:', error);
+        }
+    };
+
+    const loadSessionMessages = async (sessionId: string) => {
+        try {
+            const response = await fetch(`/api/agent/history?sessionId=${sessionId}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.messages && data.messages.length > 0) {
+                    setMessages(data.messages.map((m: { role: string; content: string }) => ({
+                        role: m.role as 'user' | 'assistant',
+                        content: m.content
+                    })));
+                    setChatStarted(true);
+                } else {
+                    setMessages([]);
+                    setChatStarted(false);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading session messages:', error);
+        }
+    };
+
+    const startNewChat = async () => {
+        if (!visitorId) return;
+
+        // Generate new session ID
+        const newSessionId = `${visitorId}_${Date.now()}`;
+        setSessionId(newSessionId);
+        localStorage.setItem('flowforge_current_session', newSessionId);
+        setMessages([]);
+        setChatStarted(false);
+    };
+
+    const selectChat = async (chatId: string) => {
+        setSessionId(chatId);
+        localStorage.setItem('flowforge_current_session', chatId);
+        await loadSessionMessages(chatId);
+    };
 
     // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
@@ -102,7 +158,15 @@ export function MinimalAuthPage() {
     };
 
     const handleSendMessage = async (message: string) => {
-        if (!message.trim() || !sessionId) return;
+        if (!message.trim() || !visitorId) return;
+
+        // Create session if needed
+        let currentSessionId = sessionId;
+        if (!currentSessionId) {
+            currentSessionId = `${visitorId}_${Date.now()}`;
+            setSessionId(currentSessionId);
+            localStorage.setItem('flowforge_current_session', currentSessionId);
+        }
 
         // Start chat mode
         if (!chatStarted) {
@@ -115,17 +179,15 @@ export function MinimalAuthPage() {
         setIsAiTyping(true);
 
         try {
-            // Call the new AI agent API with session management
             const response = await fetch('/api/agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message, sessionId }),
+                body: JSON.stringify({ message, sessionId: currentSessionId, visitorId }),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                // Use error message from API if available
                 throw new Error(data.error || 'Failed to get response');
             }
 
@@ -133,11 +195,13 @@ export function MinimalAuthPage() {
                 role: 'assistant',
                 content: data.message
             }]);
+
+            // Refresh chat history to show new/updated chat
+            await loadChatHistory(visitorId);
         } catch (error) {
             console.error('Chat error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-            // Show specific error or fallback message
             setMessages([...newMessages, {
                 role: 'assistant',
                 content: errorMessage.includes('busy') || errorMessage.includes('try again')
@@ -150,18 +214,17 @@ export function MinimalAuthPage() {
         setFocusTrigger(prev => prev + 1);
     };
 
-    const handleGoHome = async () => {
+    const handleGoHome = () => {
         setChatStarted(false);
         setMessages([]);
-        setActiveModal(null);
-        // Optionally clear chat history from server
-        // await fetch(`/api/agent/history?sessionId=${sessionId}`, { method: 'DELETE' });
+        setSessionId(null);
+        localStorage.removeItem('flowforge_current_session');
     };
 
     // Show loading state while initializing session
     if (isLoadingHistory) {
         return (
-            <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
+            <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-zinc-950">
                 <Particles
                     color="#666666"
                     quantity={120}
@@ -177,7 +240,7 @@ export function MinimalAuthPage() {
     }
 
     return (
-        <div className="relative min-h-screen w-full flex flex-col overflow-hidden">
+        <div className="relative min-h-screen w-full flex overflow-hidden bg-zinc-950">
             <Particles
                 color="#666666"
                 quantity={120}
@@ -185,190 +248,206 @@ export function MinimalAuthPage() {
                 className="absolute inset-0 pointer-events-none"
             />
 
-            {/* Sign In Button - Top Right (when chat is active) */}
-            {chatStarted && (
-                <div className="fixed top-4 right-4 z-40">
+            {/* Mobile menu toggle */}
+            <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-zinc-800 rounded-lg border border-zinc-700"
+            >
+                {sidebarOpen ? <ChevronLeft className="size-5" /> : <Menu className="size-5" />}
+            </button>
+
+            {/* Left Sidebar */}
+            <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:relative z-40 w-72 h-screen bg-zinc-900 border-r border-zinc-800 flex flex-col transition-transform duration-300`}>
+                {/* Logo */}
+                <div className="p-4 border-b border-zinc-800">
+                    <div className="flex items-center gap-2">
+                        <FlowforgeIcon className="size-6" />
+                        <span className="text-lg font-semibold">Flowforge</span>
+                    </div>
+                </div>
+
+                {/* Navigation */}
+                <nav className="p-3 border-b border-zinc-800">
+                    <ul className="space-y-1">
+                        <li>
+                            <button
+                                onClick={handleGoHome}
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors text-left"
+                            >
+                                <Home className="size-4" />
+                                <span>Home</span>
+                            </button>
+                        </li>
+                        <li>
+                            <a
+                                href="#services"
+                                className="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors"
+                            >
+                                <Briefcase className="size-4" />
+                                <span>Services</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+
+                {/* New Chat Button */}
+                <div className="p-3">
+                    <Button
+                        onClick={startNewChat}
+                        className="w-full flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+                    >
+                        <Plus className="size-4" />
+                        New Chat
+                    </Button>
+                </div>
+
+                {/* Chat History */}
+                <div className="flex-1 overflow-y-auto p-3">
+                    <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2 px-2">Chat History</p>
+                    <ul className="space-y-1">
+                        {chatHistory.length === 0 ? (
+                            <li className="px-3 py-2 text-sm text-zinc-500">No previous chats</li>
+                        ) : (
+                            chatHistory.map((chat) => (
+                                <li key={chat.id}>
+                                    <button
+                                        onClick={() => selectChat(chat.id)}
+                                        className={`w-full flex items-start gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                                            sessionId === chat.id
+                                                ? 'bg-zinc-800 text-white'
+                                                : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                                        }`}
+                                    >
+                                        <MessageSquare className="size-4 mt-0.5 flex-shrink-0" />
+                                        <span className="text-sm truncate">{chat.title}</span>
+                                    </button>
+                                </li>
+                            ))
+                        )}
+                    </ul>
+                </div>
+
+                {/* Sign In Button */}
+                <div className="p-3 border-t border-zinc-800">
                     <Button
                         onClick={() => setActiveModal('signin')}
-                        className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 shadow-lg"
+                        variant="outline"
+                        className="w-full bg-transparent border-zinc-700 hover:bg-zinc-800"
                     >
-                        <FlowforgeIcon className="size-4" />
                         Sign In
                     </Button>
                 </div>
-            )}
+            </div>
 
-            {/* Home Button - Bottom Right aligned with chat input (when chat is active) */}
-            {chatStarted && (
-                <div className="fixed bottom-10 right-4 z-40">
-                    <Button
-                        onClick={handleGoHome}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 shadow-lg"
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Chat Messages Area */}
+                {chatStarted ? (
+                    <div
+                        ref={chatContainerRef}
+                        className="flex-1 overflow-y-auto px-4 flex flex-col"
                     >
-                        <Home className="size-4" />
-                        Home
-                    </Button>
-                </div>
-            )}
-
-            {/* Main Content - Services Slideshow + Auth (only when chat not started) */}
-            {!chatStarted && (
-                <div className="relative flex-1 flex flex-col px-4 pb-8 pt-6">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-6 px-4 lg:px-8">
-                        <FlowforgeIcon className="size-6" />
-                        <p className="text-xl font-semibold">Flowforge.systems</p>
-                    </div>
-
-                    {/* Two Column Layout */}
-                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center max-w-7xl mx-auto w-full">
-                        {/* Left: Services Slideshow */}
-                        <div className="order-2 lg:order-1">
-                            <VerticalTabs />
-                        </div>
-
-                        {/* Right: Auth Section */}
-                        <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
-                            <div className="w-full max-w-sm space-y-4">
-                                <div className="flex flex-col space-y-1">
-                                    <h1 className="font-heading text-2xl font-bold tracking-wide">
-                                        Sign In or Join Now!
-                                    </h1>
-                                    <p className="text-muted-foreground text-base">
-                                        Login or create your Flowforge account.
-                                    </p>
+                        <div className="flex-1" />
+                        <div className="max-w-3xl mx-auto w-full space-y-4 pb-4 pt-16 lg:pt-4">
+                            {messages.map((message, index) => (
+                                <div
+                                    key={index}
+                                    className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                >
+                                    {message.role === 'assistant' && (
+                                        <div className="flex-shrink-0 size-8 rounded-full bg-zinc-800 flex items-center justify-center">
+                                            <Bot className="size-4 text-zinc-300" />
+                                        </div>
+                                    )}
+                                    <div
+                                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                                            message.role === 'user'
+                                                ? 'bg-white text-black'
+                                                : 'bg-zinc-800 text-zinc-100'
+                                        }`}
+                                    >
+                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                                    </div>
+                                    {message.role === 'user' && (
+                                        <div className="flex-shrink-0 size-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                                            <User className="size-4 text-zinc-300" />
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="space-y-2">
-                                    <Button
-                                        type="button"
-                                        size="lg"
-                                        className="w-full"
-                                        onClick={() => setActiveModal('google')}
-                                    >
-                                        <GoogleIcon className="me-2 size-4" />
-                                        Continue with Google
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        size="lg"
-                                        className="w-full"
-                                        onClick={() => setActiveModal('github')}
-                                    >
-                                        <GitHubIcon className="me-2 size-4" />
-                                        Continue with GitHub
-                                    </Button>
-                                </div>
-                                <p className="text-muted-foreground mt-8 text-sm">
-                                    By clicking continue, you agree to our{' '}
-                                    <a
-                                        href="/terms"
-                                        className="hover:text-primary underline underline-offset-4"
-                                    >
-                                        Terms of Service
-                                    </a>{' '}
-                                    and{' '}
-                                    <a
-                                        href="/privacy"
-                                        className="hover:text-primary underline underline-offset-4"
-                                    >
-                                        Privacy Policy
-                                    </a>
-                                    .
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+                            ))}
 
-            {/* Chat Messages Area - Messages grow from bottom */}
-            {chatStarted && (
-                <div
-                    ref={chatContainerRef}
-                    className="flex-1 overflow-y-auto px-4 flex flex-col"
-                >
-                    <div className="flex-1" /> {/* Spacer to push messages to bottom */}
-                    <div className="max-w-3xl mx-auto w-full space-y-4 pb-4">
-                        {messages.map((message, index) => (
-                            <div
-                                key={index}
-                                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
-                                {message.role === 'assistant' && (
+                            {/* AI Typing Indicator */}
+                            {isAiTyping && (
+                                <div className="flex gap-3 justify-start">
                                     <div className="flex-shrink-0 size-8 rounded-full bg-zinc-800 flex items-center justify-center">
                                         <Bot className="size-4 text-zinc-300" />
                                     </div>
-                                )}
-                                <div
-                                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                                        message.role === 'user'
-                                            ? 'bg-white text-black'
-                                            : 'bg-zinc-800 text-zinc-100'
-                                    }`}
-                                >
-                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                                </div>
-                                {message.role === 'user' && (
-                                    <div className="flex-shrink-0 size-8 rounded-full bg-zinc-700 flex items-center justify-center">
-                                        <User className="size-4 text-zinc-300" />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-
-                        {/* AI Typing Indicator */}
-                        {isAiTyping && (
-                            <div className="flex gap-3 justify-start">
-                                <div className="flex-shrink-0 size-8 rounded-full bg-zinc-800 flex items-center justify-center">
-                                    <Bot className="size-4 text-zinc-300" />
-                                </div>
-                                <div className="bg-zinc-800 rounded-2xl px-4 py-3">
-                                    <div className="flex gap-1">
-                                        <span className="size-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <span className="size-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <span className="size-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    <div className="bg-zinc-800 rounded-2xl px-4 py-3">
+                                        <div className="flex gap-1">
+                                            <span className="size-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                            <span className="size-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                            <span className="size-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        <div ref={messagesEndRef} />
+                            <div ref={messagesEndRef} />
+                        </div>
+                    </div>
+                ) : (
+                    /* Welcome Screen */
+                    <div className="flex-1 flex flex-col items-center justify-center px-4 pt-16 lg:pt-0">
+                        <div className="text-center max-w-md">
+                            <FlowforgeIcon className="size-12 mx-auto mb-4 text-zinc-400" />
+                            <h1 className="text-2xl font-bold mb-2">Welcome to Flowforge</h1>
+                            <p className="text-zinc-400 mb-6">
+                                AI-powered business automation solutions. Ask me about our services, pricing, or how we can help your business.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Chat Input Section */}
+                <div className="relative w-full pb-8 px-4">
+                    <div className="max-w-3xl mx-auto">
+                        <AIChatInput onSendMessage={handleSendMessage} disabled={isAiTyping} focusTrigger={focusTrigger} />
                     </div>
                 </div>
-            )}
-
-            {/* Chat Input Section */}
-            <div className="relative w-full pb-8">
-                <AIChatInput onSendMessage={handleSendMessage} disabled={isAiTyping} focusTrigger={focusTrigger} />
             </div>
 
-            {/* Modal Overlay - For Sign In (popup in center) */}
+            {/* Backdrop for mobile sidebar */}
+            {sidebarOpen && (
+                <div
+                    className="lg:hidden fixed inset-0 bg-black/50 z-30"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
+            {/* Modal Overlay - For Sign In */}
             {(activeModal === 'signin' || activeModal === 'google' || activeModal === 'github') && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
                     onClick={closeModal}
                 >
                     <div
-                        className="relative w-full max-w-md mx-4 bg-background border border-border rounded-lg shadow-xl p-6"
+                        className="relative w-full max-w-md mx-4 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl p-6"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button
                             onClick={closeModal}
-                            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+                            className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
                         >
                             <X className="size-5" />
                         </button>
 
                         {activeModal === 'signin' ? (
-                            // Sign In Options Modal
                             <>
                                 <div className="flex items-center gap-2 mb-6">
                                     <FlowforgeIcon className="size-6" />
                                     <h2 className="text-xl font-semibold">Sign In or Join Now!</h2>
                                 </div>
-                                <p className="text-muted-foreground text-sm mb-6">
+                                <p className="text-zinc-400 text-sm mb-6">
                                     Login or create your Flowforge account.
                                 </p>
                                 <div className="space-y-2">
@@ -391,20 +470,19 @@ export function MinimalAuthPage() {
                                         Continue with GitHub
                                     </Button>
                                 </div>
-                                <p className="text-muted-foreground mt-6 text-sm">
+                                <p className="text-zinc-500 mt-6 text-sm">
                                     By clicking continue, you agree to our{' '}
-                                    <a href="/terms" className="hover:text-primary underline underline-offset-4">
+                                    <a href="/terms" className="hover:text-white underline underline-offset-4">
                                         Terms of Service
                                     </a>{' '}
                                     and{' '}
-                                    <a href="/privacy" className="hover:text-primary underline underline-offset-4">
+                                    <a href="/privacy" className="hover:text-white underline underline-offset-4">
                                         Privacy Policy
                                     </a>
                                     .
                                 </p>
                             </>
                         ) : (
-                            // Google/GitHub Form Modal
                             <>
                                 <div className="flex items-center gap-3 mb-6">
                                     {activeModal === 'google' ? (
@@ -429,7 +507,7 @@ export function MinimalAuthPage() {
                                                 required
                                                 value={formData.email}
                                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                                className="w-full px-4 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                                             />
                                         </div>
                                     ) : (
@@ -443,7 +521,7 @@ export function MinimalAuthPage() {
                                                 required
                                                 value={formData.username}
                                                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                                className="w-full px-4 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                                             />
                                         </div>
                                     )}
@@ -458,7 +536,7 @@ export function MinimalAuthPage() {
                                             required
                                             value={formData.phone}
                                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                            className="w-full px-4 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-zinc-500"
                                         />
                                     </div>
 

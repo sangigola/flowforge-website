@@ -5,47 +5,87 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const SERVICES = [
+interface Service {
+  id: string;
+  title: { en: string; ka: string };
+  description: { en: string; ka: string };
+  image: string;
+}
+
+const SERVICES: Service[] = [
   {
     id: "01",
-    title: "AI-Powered CRM",
-    description:
-      "Smart customer relationship management with automated lead scoring, follow-ups, and personalized engagement.",
-    image:
-      "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200",
+    title: {
+      en: "AI-Powered CRM",
+      ka: "AI-ზე დაფუძნებული CRM"
+    },
+    description: {
+      en: "Smart customer relationship management with automated lead scoring, follow-ups, and personalized engagement.",
+      ka: "ინტელექტუალური მომხმარებელთან ურთიერთობის მართვა ავტომატური ლიდების შეფასებით, შეხსენებებით და პერსონალიზებული ჩართულობით."
+    },
+    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200",
   },
   {
     id: "02",
-    title: "Custom Chatbots",
-    description:
-      "Intelligent conversational AI that handles customer support, lead capture, and 24/7 engagement.",
-    image:
-      "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?q=80&w=1200",
+    title: {
+      en: "Custom Chatbots",
+      ka: "ჩატბოტები"
+    },
+    description: {
+      en: "Intelligent conversational AI that handles customer support, lead capture, and 24/7 engagement.",
+      ka: "ინტელექტუალური სასაუბრო AI, რომელიც უზრუნველყოფს მომხმარებელთა მხარდაჭერას, ლიდების მოზიდვას და 24/7 ჩართულობას."
+    },
+    image: "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?q=80&w=1200",
   },
   {
     id: "03",
-    title: "Workflow Automation",
-    description:
-      "Streamline repetitive tasks with AI-driven automation that saves time and reduces errors.",
-    image:
-      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200",
+    title: {
+      en: "Workflow Automation",
+      ka: "პროცესების ავტომატიზაცია"
+    },
+    description: {
+      en: "Streamline repetitive tasks with AI-driven automation that saves time and reduces errors.",
+      ka: "გაამარტივეთ განმეორებადი ამოცანები AI-ზე დაფუძნებული ავტომატიზაციით, რომელიც დაზოგავს დროს და ამცირებს შეცდომებს."
+    },
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200",
   },
   {
     id: "04",
-    title: "Web & Mobile Apps",
-    description:
-      "Full-stack development of modern, responsive applications tailored to your business needs.",
-    image:
-      "https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?q=80&w=1200",
+    title: {
+      en: "Web & Mobile Apps",
+      ka: "ვებ და მობილური აპები"
+    },
+    description: {
+      en: "Full-stack development of modern, responsive applications tailored to your business needs.",
+      ka: "თანამედროვე, რესპონსიული აპლიკაციების სრული დეველოპმენტი, მორგებული თქვენი ბიზნესის საჭიროებებზე."
+    },
+    image: "https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?q=80&w=1200",
   },
 ];
 
+const translations = {
+  en: {
+    title: "What We Build",
+    subtitle: "(SERVICES)"
+  },
+  ka: {
+    title: "ჩვენი სერვისები",
+    subtitle: "(სერვისები)"
+  }
+};
+
 const AUTO_PLAY_DURATION = 5000;
 
-export function VerticalTabs() {
+interface VerticalTabsProps {
+  language?: 'en' | 'ka';
+}
+
+export function VerticalTabs({ language = 'en' }: VerticalTabsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+
+  const t = translations[language];
 
   const handleNext = useCallback(() => {
     setDirection(1);
@@ -99,10 +139,10 @@ export function VerticalTabs() {
           <div className="lg:col-span-5 flex flex-col justify-center order-2 lg:order-1 pt-2">
             <div className="space-y-1 mb-6">
               <h2 className="tracking-tight text-balance text-xl font-medium md:text-2xl lg:text-3xl text-foreground">
-                What We Build
+                {t.title}
               </h2>
               <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-[0.3em] block ml-0.5">
-                (SERVICES)
+                {t.subtitle}
               </span>
             </div>
 
@@ -148,7 +188,7 @@ export function VerticalTabs() {
                           isActive ? "text-foreground" : ""
                         )}
                       >
-                        {service.title}
+                        {service.title[language]}
                       </span>
 
                       <AnimatePresence mode="wait">
@@ -164,7 +204,7 @@ export function VerticalTabs() {
                             className="overflow-hidden"
                           >
                             <p className="text-muted-foreground text-xs md:text-sm font-normal leading-relaxed max-w-sm pb-1">
-                              {service.description}
+                              {service.description[language]}
                             </p>
                           </motion.div>
                         )}
@@ -204,7 +244,7 @@ export function VerticalTabs() {
                   >
                     <img
                       src={SERVICES[activeIndex].image}
-                      alt={SERVICES[activeIndex].title}
+                      alt={SERVICES[activeIndex].title[language]}
                       className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                     />
 

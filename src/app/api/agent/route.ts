@@ -283,7 +283,7 @@ Respond as Flowforge support (2-3 sentences max):`;
       model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: 500,
+          maxOutputTokens: 1000,
           temperature: 0.5,
         }
       })

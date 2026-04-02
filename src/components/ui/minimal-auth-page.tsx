@@ -396,7 +396,7 @@ export function MinimalAuthPage() {
                         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center max-w-6xl mx-auto w-full">
                             {/* Left: Services Slideshow */}
                             <div className="order-2 lg:order-1">
-                                <VerticalTabs />
+                                <VerticalTabs language={language} />
                             </div>
 
                             {/* Right: Auth Section */}

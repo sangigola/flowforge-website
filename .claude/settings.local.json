@@ -7,7 +7,10 @@
       "Bash(vercel --prod 2>&1 | tail -25)",
       "Bash(git add src/components/ui/minimal-auth-page.tsx && git commit -m \"Add persistent sidebar with services, chat history, and language toggle\" && git push)",
       "Bash(vercel --prod 2>&1 | tail -20)",
-      "Bash(git add -A && git commit -m \"Add translations for services slideshow, increase token limit, fix rate limit handling\" && git push)"
+      "Bash(git add -A && git commit -m \"Add translations for services slideshow, increase token limit, fix rate limit handling\" && git push)",
+      "Bash(vercel --prod 2>&1 | tail -15)",
+      "Bash(curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"hello\", \"sessionId\": \"test999\"}' 2>&1)",
+      "Bash(git add -A && git commit -m \"Switch to gemini-1.5-flash model, increase retry attempts\" && git push && vercel --prod 2>&1 | tail -10)"
     ]
   }
 }

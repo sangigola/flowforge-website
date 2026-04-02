@@ -93,8 +93,8 @@ function sleep(ms: number): Promise<void> {
 // Retry wrapper for API calls
 async function withRetry<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelay: number = 1000
+  maxRetries: number = 5,
+  baseDelay: number = 2000
 ): Promise<T> {
   let lastError: Error | null = null;
 
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
 
     // 5. Build context and call Gemini
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const conversationContext = buildConversationContext(session.messages);
     const prompt = `${SYSTEM_PROMPT}

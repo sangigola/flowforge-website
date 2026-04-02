@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Users, Mail, Phone, RefreshCw, Shield, Clock, Search, Code2, MessageSquare, ChevronDown, ChevronUp, CheckCircle, AlertCircle } from 'lucide-react';
+import { Users, Mail, Phone, RefreshCw, Shield, Clock, Search, Code2, MessageSquare, ChevronDown, ChevronUp, CheckCircle, AlertCircle, Ticket } from 'lucide-react';
 
 interface User {
   id: string;
@@ -22,15 +22,26 @@ interface ChatLead {
   status: 'new' | 'contacted' | 'converted';
 }
 
+interface SupportTicket {
+  id: string;
+  sessionId: string;
+  issue: string;
+  status: 'new' | 'in-progress' | 'resolved';
+  createdAt: string;
+  priority: 'low' | 'medium' | 'high';
+}
+
 export default function Dashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [leads, setLeads] = useState<ChatLead[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [adminKey, setAdminKey] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'leads'>('leads');
+  const [activeTab, setActiveTab] = useState<'users' | 'leads' | 'tickets'>('leads');
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
+  const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -61,6 +72,16 @@ export default function Dashboard() {
         setLeads(leadsData.leads);
       }
 
+      // Fetch tickets
+      const ticketsRes = await fetch('/api/tickets', {
+        headers: { 'x-admin-key': adminKey },
+      });
+
+      const ticketsData = await ticketsRes.json();
+      if (ticketsData.tickets !== undefined) {
+        setTickets(ticketsData.tickets);
+      }
+
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -83,6 +104,23 @@ export default function Dashboard() {
       setLeads(leads.map(l => l.id === leadId ? { ...l, status } : l));
     } catch (error) {
       console.error('Error updating lead:', error);
+    }
+  };
+
+  const updateTicketStatus = async (ticketId: string, status: 'new' | 'in-progress' | 'resolved') => {
+    try {
+      await fetch('/api/tickets', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminKey,
+        },
+        body: JSON.stringify({ ticketId, status }),
+      });
+
+      setTickets(tickets.map(t => t.id === ticketId ? { ...t, status } : t));
+    } catch (error) {
+      console.error('Error updating ticket:', error);
     }
   };
 
@@ -109,9 +147,17 @@ export default function Dashboard() {
     );
   });
 
+  const filteredTickets = tickets.filter(ticket => {
+    const query = searchQuery.toLowerCase();
+    return (
+      ticket.issue.toLowerCase().includes(query) ||
+      ticket.sessionId.toLowerCase().includes(query) ||
+      ticket.status.toLowerCase().includes(query)
+    );
+  });
+
   const newLeads = leads.filter(l => l.status === 'new');
-  const googleUsers = users.filter(u => u.type === 'google');
-  const githubUsers = users.filter(u => u.type === 'github');
+  const newTickets = tickets.filter(t => t.status === 'new');
 
   if (!isAuthenticated) {
     return (
@@ -219,11 +265,11 @@ export default function Dashboard() {
           <div className="bg-zinc-900 rounded-2xl p-5 border border-zinc-800">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <Code2 className="w-5 h-5 text-purple-400" />
+                <Ticket className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <p className="text-xl font-bold">{googleUsers.length + githubUsers.length}</p>
-                <p className="text-xs text-zinc-500">Sign-ups</p>
+                <p className="text-xl font-bold">{tickets.length}</p>
+                <p className="text-xs text-zinc-500">Tickets ({newTickets.length} new)</p>
               </div>
             </div>
           </div>
@@ -253,6 +299,17 @@ export default function Dashboard() {
             <Users className="w-4 h-4 inline mr-2" />
             Registered Users ({users.length})
           </button>
+          <button
+            onClick={() => setActiveTab('tickets')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
+              activeTab === 'tickets'
+                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+            }`}
+          >
+            <Ticket className="w-4 h-4 inline mr-2" />
+            Support Tickets ({tickets.length})
+          </button>
         </div>
 
         {/* Search */}
@@ -263,7 +320,7 @@ export default function Dashboard() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={activeTab === 'leads' ? 'Search leads...' : 'Search users...'}
+              placeholder={activeTab === 'leads' ? 'Search leads...' : activeTab === 'users' ? 'Search users...' : 'Search tickets...'}
               className="w-full pl-12 pr-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -482,6 +539,124 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* Tickets Tab */}
+        {activeTab === 'tickets' && (
+          <div className="space-y-4">
+            {loading ? (
+              <div className="bg-zinc-900 rounded-2xl p-12 border border-zinc-800 text-center">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-zinc-500" />
+                <p className="text-zinc-500">Loading tickets...</p>
+              </div>
+            ) : filteredTickets.length === 0 ? (
+              <div className="bg-zinc-900 rounded-2xl p-12 border border-zinc-800 text-center">
+                <Ticket className="w-8 h-8 mx-auto mb-3 text-zinc-600" />
+                <p className="text-zinc-500">No support tickets yet</p>
+                <p className="text-zinc-600 text-sm mt-1">Tickets will appear when users request support in chat</p>
+              </div>
+            ) : (
+              filteredTickets.map((ticket) => (
+                <div key={ticket.id} className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden">
+                  {/* Ticket Header */}
+                  <div
+                    className="p-5 cursor-pointer hover:bg-zinc-800/50 transition"
+                    onClick={() => setExpandedTicket(expandedTicket === ticket.id ? null : ticket.id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          ticket.status === 'new' ? 'bg-yellow-500/20' :
+                          ticket.status === 'in-progress' ? 'bg-blue-500/20' : 'bg-green-500/20'
+                        }`}>
+                          <Ticket className={`w-5 h-5 ${
+                            ticket.status === 'new' ? 'text-yellow-400' :
+                            ticket.status === 'in-progress' ? 'text-blue-400' : 'text-green-400'
+                          }`} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">{ticket.issue.slice(0, 100)}{ticket.issue.length > 100 ? '...' : ''}</p>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              ticket.status === 'new' ? 'bg-yellow-500/20 text-yellow-400' :
+                              ticket.status === 'in-progress' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
+                            }`}>
+                              {ticket.status === 'in-progress' ? 'In Progress' : ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              ticket.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                              ticket.priority === 'medium' ? 'bg-orange-500/20 text-orange-400' : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)} Priority
+                            </span>
+                            <span className="text-xs text-zinc-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {new Date(ticket.createdAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {expandedTicket === ticket.id ? (
+                          <ChevronUp className="w-5 h-5 text-zinc-500" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-zinc-500" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded Content */}
+                  {expandedTicket === ticket.id && (
+                    <div className="border-t border-zinc-800">
+                      {/* Status Actions */}
+                      <div className="p-4 bg-zinc-800/30 flex flex-wrap gap-2">
+                        <span className="text-xs text-zinc-500 mr-2">Mark as:</span>
+                        {['new', 'in-progress', 'resolved'].map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => updateTicketStatus(ticket.id, status as 'new' | 'in-progress' | 'resolved')}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                              ticket.status === status
+                                ? status === 'new' ? 'bg-yellow-500/30 text-yellow-400' :
+                                  status === 'in-progress' ? 'bg-blue-500/30 text-blue-400' : 'bg-green-500/30 text-green-400'
+                                : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
+                            }`}
+                          >
+                            {status === 'resolved' && <CheckCircle className="w-3 h-3 inline mr-1" />}
+                            {status === 'in-progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Ticket Details */}
+                      <div className="p-4">
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs text-zinc-500 mb-1">Full Issue:</p>
+                            <p className="text-sm text-zinc-300">{ticket.issue}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-zinc-500 mb-1">Session ID:</p>
+                            <p className="text-sm text-zinc-400 font-mono">{ticket.sessionId}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-zinc-500 mb-1">Ticket ID:</p>
+                            <p className="text-sm text-zinc-400 font-mono">{ticket.id}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         )}
       </main>

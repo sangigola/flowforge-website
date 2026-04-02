@@ -6,6 +6,7 @@ import { X, Loader2, User, Bot, Home } from 'lucide-react';
 import { Particles } from '@/components/ui/particles';
 import { AIChatInput } from '@/components/ui/ai-chat-input';
 import { VerticalTabs } from '@/components/ui/vertical-tabs';
+import { getOrCreateSessionId } from '@/lib/fingerprint';
 
 type ModalType = 'google' | 'github' | 'signin' | null;
 
@@ -28,8 +29,39 @@ export function MinimalAuthPage() {
     const [chatStarted, setChatStarted] = useState(false);
     const [isAiTyping, setIsAiTyping] = useState(false);
     const [focusTrigger, setFocusTrigger] = useState(0);
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
+
+    // Initialize session and load chat history
+    useEffect(() => {
+        const initSession = async () => {
+            try {
+                // Get or create session ID
+                const id = await getOrCreateSessionId();
+                setSessionId(id);
+
+                // Load existing chat history
+                const response = await fetch(`/api/agent/history?sessionId=${id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.messages && data.messages.length > 0) {
+                        setMessages(data.messages.map((m: { role: string; content: string }) => ({
+                            role: m.role as 'user' | 'assistant',
+                            content: m.content
+                        })));
+                        setChatStarted(true);
+                    }
+                }
+            } catch (error) {
+                console.error('Error initializing session:', error);
+            } finally {
+                setIsLoadingHistory(false);
+            }
+        };
+        initSession();
+    }, []);
 
     // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
@@ -70,7 +102,7 @@ export function MinimalAuthPage() {
     };
 
     const handleSendMessage = async (message: string) => {
-        if (!message.trim()) return;
+        if (!message.trim() || !sessionId) return;
 
         // Start chat mode
         if (!chatStarted) {
@@ -83,11 +115,11 @@ export function MinimalAuthPage() {
         setIsAiTyping(true);
 
         try {
-            // Call the AI chat API
-            const response = await fetch('/api/chat', {
+            // Call the new AI agent API with session management
+            const response = await fetch('/api/agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: newMessages }),
+                body: JSON.stringify({ message, sessionId }),
             });
 
             const data = await response.json();
@@ -118,11 +150,31 @@ export function MinimalAuthPage() {
         setFocusTrigger(prev => prev + 1);
     };
 
-    const handleGoHome = () => {
+    const handleGoHome = async () => {
         setChatStarted(false);
         setMessages([]);
         setActiveModal(null);
+        // Optionally clear chat history from server
+        // await fetch(`/api/agent/history?sessionId=${sessionId}`, { method: 'DELETE' });
     };
+
+    // Show loading state while initializing session
+    if (isLoadingHistory) {
+        return (
+            <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
+                <Particles
+                    color="#666666"
+                    quantity={120}
+                    ease={20}
+                    className="absolute inset-0 pointer-events-none"
+                />
+                <div className="flex items-center gap-3 text-zinc-400">
+                    <Loader2 className="size-5 animate-spin" />
+                    <span>Loading...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen w-full flex flex-col overflow-hidden">

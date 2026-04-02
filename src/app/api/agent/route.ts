@@ -93,8 +93,8 @@ function sleep(ms: number): Promise<void> {
 // Retry wrapper for API calls
 async function withRetry<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 5,
-  baseDelay: number = 2000
+  maxRetries: number = 2,
+  baseDelay: number = 1000
 ): Promise<T> {
   let lastError: Error | null = null;
 

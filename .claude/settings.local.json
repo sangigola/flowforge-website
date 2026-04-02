@@ -16,7 +16,12 @@
       "Bash(sleep 8 && curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"hello\", \"sessionId\": \"testFresh1\"}' 2>&1)",
       "Bash(git add -A && git commit -m \"Use gemini-1.5-flash-latest model\" && git push && vercel --prod 2>&1 | grep -E \"\\(ready|error|Aliased\\)\")",
       "Bash(sleep 5 && curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"hi there\", \"sessionId\": \"brandNew1\"}' 2>&1)",
-      "Bash(git add -A && git commit -m \"Revert to gemini-2.5-flash model\" && git push && vercel --prod 2>&1 | grep -E \"\\(Aliased|READY\\)\")"
+      "Bash(git add -A && git commit -m \"Revert to gemini-2.5-flash model\" && git push && vercel --prod 2>&1 | grep -E \"\\(Aliased|READY\\)\")",
+      "Bash(sleep 15 && curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"hello\", \"sessionId\": \"fresh123abc\"}' 2>&1)",
+      "Bash(curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"რა სერვისებს გთავაზობთ?\", \"sessionId\": \"georgianTest1\"}' 2>&1)",
+      "Bash(curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"How much does a chatbot cost?\", \"sessionId\": \"priceTest1\"}' 2>&1)",
+      "Bash(time curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"hi\", \"sessionId\": \"quicktest1\"}' 2>&1)",
+      "Bash(git add -A && git commit -m \"Reduce retry attempts for faster response\" && git push && vercel --prod 2>&1 | grep \"Aliased\")"
     ]
   }
 }

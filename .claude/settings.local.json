@@ -14,7 +14,9 @@
       "Bash(sleep 5 && curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"hello\", \"sessionId\": \"testNew123\"}' 2>&1)",
       "Bash(git add -A && git commit -m \"Use gemini-2.0-flash model\" && git push && vercel --prod 2>&1 | tail -5)",
       "Bash(sleep 8 && curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"hello\", \"sessionId\": \"testFresh1\"}' 2>&1)",
-      "Bash(git add -A && git commit -m \"Use gemini-1.5-flash-latest model\" && git push && vercel --prod 2>&1 | grep -E \"\\(ready|error|Aliased\\)\")"
+      "Bash(git add -A && git commit -m \"Use gemini-1.5-flash-latest model\" && git push && vercel --prod 2>&1 | grep -E \"\\(ready|error|Aliased\\)\")",
+      "Bash(sleep 5 && curl -s \"https://flowforge.systems/api/agent\" -X POST -H \"Content-Type: application/json\" -d '{\"message\": \"hi there\", \"sessionId\": \"brandNew1\"}' 2>&1)",
+      "Bash(git add -A && git commit -m \"Revert to gemini-2.5-flash model\" && git push && vercel --prod 2>&1 | grep -E \"\\(Aliased|READY\\)\")"
     ]
   }
 }
